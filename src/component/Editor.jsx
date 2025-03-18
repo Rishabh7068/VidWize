@@ -1,14 +1,25 @@
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
+import Footer from "./Footer";
 
 const Editor = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    console.log(storedUser.role);
+    if (storedUser.role !== "editor") {
+      navigate("/creator");
+    }
+  }, []);
+
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      localStorage.removeItem("user");
       alert("Logout successful!");
       navigate("/");
     } catch (error) {
@@ -29,7 +40,7 @@ const Editor = () => {
       <div className="flex flex-col min-h-screen bg-gray-50">
         <header className="border-b border-gray-200 bg-white">
           <nav className="flex items-center justify-between p-6">
-            <div className="text-lg font-bold text-gray-900">VidWize</div>
+          <a href="/" className="text-lg font-bold text-gray-900">VidWize</a>
             <div className="space-x-4">
               <a href="#" className="text-gray-700 hover:text-blue-600">
                 Home
@@ -152,29 +163,46 @@ const Editor = () => {
                     </a>
                   </p>
                   <p className="text-sm text-gray-500">
+                    Instruction :- ____________________
+                  </p>
+                  <p className="text-sm text-gray-500">
                     Allotted Date: 01/01/2023
                   </p>
                   <p className="text-sm text-gray-500">Due Date: 01/15/2023</p>
                 </div>
               </div>
             </section>
+            
+            <section>
+              <h2 class="text-2xl font-semibold mb-4">Pending For Approval</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                  <h3 class="font-semibold">Youtuber Channel Name</h3>
+                  <p class="text-gray-600">Project Name</p>
+                  <p className="text-sm text-gray-500">
+                    Instructions : ___________________
+                  </p>
+                  <p class="text-sm text-gray-500">Allotted Date: 01/01/2023</p>
+                  <p class="text-sm text-gray-500">Due Date: 01/15/2023</p>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 class="text-2xl font-semibold mb-4">Completed Work</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                  <h3 class="font-semibold">Youtuber Channel Name</h3>
+                  <p class="text-gray-600">Project Name</p>
+                  <p class="text-sm text-gray-500">Completion Date: 01/15/2023</p>
+                </div>
+              </div>
+            </section>
+
           </div>
         </main>
-
-        <footer className="bg-white border-t border-gray-200">
-          <div className="text-center py-4">
-            <p className="text-gray-600">Contact us: info@vidwize.com</p>
-            <div className="mt-2">
-              <a href="#" className="text-gray-700 hover:text-blue-600">
-                Terms of Service
-              </a>
-              <span className="mx-2">|</span>
-              <a href="#" className="text-gray-700 hover:text-blue-600">
-                Privacy Policy
-              </a>
-            </div>
-          </div>
-        </footer>
+          <Footer/>
+        
       </div>
     </>
   );

@@ -8,8 +8,6 @@ import {
     createUserWithEmailAndPassword,
     signInWithPopup,
     sendEmailVerification,
-    FacebookAuthProvider,
-    
   } from "firebase/auth";
 
 
@@ -23,13 +21,10 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_SOME_measurementId
 };
 
-console.log(import.meta.env.VITE_SOME_apiKey);
-
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
-const facebookProvider = new FacebookAuthProvider();
 auth.languageCode = "it";
 auth.appVerificationDisabledForTesting = true;
 
@@ -37,7 +32,6 @@ auth.appVerificationDisabledForTesting = true;
 export {
     auth,
     googleProvider,
-    facebookProvider,
     onAuthStateChanged,
     signOut,
     signInWithEmailAndPassword,

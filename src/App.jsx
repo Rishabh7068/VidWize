@@ -5,11 +5,32 @@ import Home from "./component/Home";
 import Recommendation from "./component/Recommendation";
 import Editor from "./component/Editor";
 import Creator from "./component/Creator";
+import Signup from "./component/Signup";
+import Login from "./component/Login";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+      <Route
+          exact
+          path="/signup"
+          element={
+            <>
+              <Signup/>
+            </>
+          }
+        />
+        <Route
+          exact
+          path="/login"
+          element={
+            <>
+              <Login/>
+            </>
+          }
+        />
+
         <Route
           exact
           path="/"

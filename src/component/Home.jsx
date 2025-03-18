@@ -1,50 +1,13 @@
-import {React , useState} from 'react';
-import {signInWithPopup , auth  , googleProvider   } from "../Firebase/firebaseconfige" ;
+import {React} from 'react';
 import { useNavigate } from "react-router-dom";
+import Footer from './Footer';
 
 const Home = () => {
-    const navigate = useNavigate();
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
-
-    const handleGoogleLoginforCretor = async () => {
-        if (loading) return; 
-        setLoading(true); 
-        try {
-          const result = await signInWithPopup(auth, googleProvider);
-          console.log("Google login success:", result.user);
-          setUser(result.user);
-          navigate("/Creator");
-    
-        } catch (error) {
-          console.error("Error in Google login", error);
-        } finally {
-          setLoading(false); 
-        }
-      };
-
-      const handleGoogleLoginforEditor = async () => {
-        if (loading) return; 
-        setLoading(true); 
-        try {
-          const result = await signInWithPopup(auth, googleProvider);
-          console.log("Google login success:", result.user);
-          setUser(result.user);
-          navigate("/Editor");
-        } catch (error) {
-          console.error("Error in Google login", error);
-        } finally {
-          setLoading(false); 
-        }
-      };
-
-
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <header className="border-b border-gray-200 bg-white">
         <nav className="flex items-center justify-between p-6">
-          <div className="text-lg font-bold text-gray-900">VidWize</div>
+        <a href="/" className="text-lg font-bold text-gray-900">VidWize</a>
           <div className="space-x-4">
             <a href="#" className="text-gray-700 hover:text-blue-600">
               Home
@@ -58,8 +21,11 @@ const Home = () => {
             <a href="#" className="text-gray-700 hover:text-blue-600">
               Testimonials
             </a>
-            <a href="#" className="text-gray-700 hover:text-blue-600">
+            <a href="/login" className="text-gray-700 hover:text-blue-600">
               Login
+            </a>
+            <a href="/signup" className="text-gray-700 hover:text-blue-600">
+              Signup
             </a>
           </div>
         </nav>
@@ -74,15 +40,11 @@ const Home = () => {
             Helping YouTubers manage their content workflow effectively.
           </p>
           <div className="flex justify-center mt-8">
-            <a onClick={handleGoogleLoginforCretor } disabled={loading}
-              className="bg-blue-500 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition"
-            >
-              Get Started as Creator
-            </a>
-            <a onClick={handleGoogleLoginforEditor} disabled={loading}
+            
+            <a href='/signup' 
               className="bg-green-500 text-white py-3 px-6 ml-4 rounded-lg hover:bg-green-700 transition"
             >
-              Get Started as Editor
+              Join Us
             </a>
           </div>
         </section>
@@ -131,20 +93,7 @@ const Home = () => {
         </section>
       </main>
 
-      <footer className="bg-white border-t border-gray-200">
-        <div className="text-center py-4">
-          <p className="text-gray-600">Contact us: info@vidwize.com</p>
-          <div className="mt-2">
-            <a href="#" className="text-gray-700 hover:text-blue-600">
-              Terms of Service
-            </a>
-            <span className="mx-2">|</span>
-            <a href="#" className="text-gray-700 hover:text-blue-600">
-              Privacy Policy
-            </a>
-          </div>
-        </div>
-      </footer>
+      <Footer/>
     </div>
   );
 };
