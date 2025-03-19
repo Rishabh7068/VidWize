@@ -37,6 +37,8 @@ const Login = () => {
 
         localStorage.setItem("user", JSON.stringify(response.data.user));
 
+        console.log(role);
+
         if (role === "Youtuber") {
           navigate("/creator");
         } else {                

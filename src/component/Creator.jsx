@@ -1,23 +1,22 @@
-import React, { useState, useEffect} from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
+import axios from "axios";
 
 const Creator = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddEditorModalOpen, setIsAddEditorModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
-
-    useEffect(() => {
-      const storedUser = JSON.parse(localStorage.getItem("user"));
-      console.log(storedUser.role);
-      if (storedUser.role !== "creator") {
-        navigate("/editor");
-      }
-    }, []);
-
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    if (storedUser.role !== "youtuber") {
+      navigate("/editor");
+    }
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -30,12 +29,111 @@ const Creator = () => {
     }
   };
 
-  const openModal = () => {
-    setIsModalOpen(true);
+  const [editor, setEditor] = useState({});
+  const user = JSON.parse(localStorage.getItem("user"));
+  const uid = user.uid;
+
+  const fetchEditor = async () => {
+    const token = await auth.currentUser.getIdToken();
+
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/youtuber/getEditor/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setEditor(response.data.editorData);
+    } catch (error) {
+      console.error("Error fetching editor data:", error);
+      throw error;
+    }
+    
   };
 
-  const closeModal = () => {
+  const handleAddEditor = async (event) => {
+    event.preventDefault();
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+
+    const token = await auth.currentUser.getIdToken();
+
+    const editorEmail = event.target.elements.editorEmail.value;
+    try {
+      const response = await axios.post(
+        `http://localhost:9000/api/youtuber/add-editor/${uid}`,
+        {
+          editorEmail: editorEmail,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert("Editor added successfully!");
+      closeModalAddEditor();
+    } catch (error) {
+      console.error("Error adding editor:", error);
+      alert("Failed to add editor. Please try again.");
+    }
+  };
+
+
+  const handleassignWork = async (event) => {
+    event.preventDefault();
+    if (!auth.currentUser) {  
+      console.error("No user is currently signed in.");
+      return;
+    }
+    const { editorId, projectName, driveLink, instructions, currentDate, dueDate } = event.target.elements;
+    const token = await auth.currentUser.getIdToken();
+    console.log(editorId.value, projectName.value, driveLink.value, instructions.value, currentDate.value, dueDate.value);
+    console.log(token);
+    try {
+      const response = await axios.post(
+        `http://localhost:9000/api/youtuber/assign_work/${uid}`,
+        {
+          editorId: editorId.value,
+          projectName: projectName.value,
+          driveLink: driveLink.value,
+          instructions: instructions.value,
+          currentDate: currentDate.value,
+          dueDate: dueDate.value,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert("Work assigned successfully!");
+      closeModalAssign();
+    } catch (error) {
+      console.error("Error assigning work:", error);
+      alert("Failed to assign work. Please try again.");
+    }
+  }
+
+
+  const openModalAssign = () => {
+    setIsModalOpen(true);
+    fetchEditor();
+  };
+  const openModalAddEditor = () => {
+    setIsAddEditorModalOpen(true);
+  };
+
+  const closeModalAssign = () => {
     setIsModalOpen(false);
+  };
+
+  const closeModalAddEditor = () => {
+    setIsAddEditorModalOpen(false);
   };
 
   return (
@@ -43,7 +141,9 @@ const Creator = () => {
       <div className="flex flex-col min-h-screen bg-gray-50">
         <header className="border-b border-gray-200 bg-white">
           <nav className="flex items-center justify-between p-6">
-          <a href="/" className="text-lg font-bold text-gray-900">VidWize</a>
+            <a href="/" className="text-lg font-bold text-gray-900">
+              VidWize
+            </a>
             <div className="space-x-4">
               <a href="#" className="text-gray-700 hover:text-blue-600">
                 Home
@@ -74,14 +174,22 @@ const Creator = () => {
         </header>
 
         <main className="flex-1 p-6">
-          <div className="mb-6 flex justify-between items-center">
-            <h1 className="text-3xl font-bold">Creator Dashboard</h1>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-              onClick={openModal}
-            >
-              + Assign Work
-            </button>
+          <div className="mb-6 flex justify-between items-center ">
+            <h1 className="text-3xl font-bold ">Creator Dashboard</h1>
+            <div>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition mx-10"
+                onClick={openModalAssign}
+              >
+                + Assign Work
+              </button>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition "
+                onClick={openModalAddEditor}
+              >
+                + Add Editor
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6">
@@ -90,14 +198,24 @@ const Creator = () => {
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Assign Work</h2>
-                  <form className="mt-4">
+                  <form className="mt-4" onSubmit={handleassignWork}>
                     <label className="block mb-2 text-sm font-medium">
                       Select Editor:
                     </label>
-                    <select className="border border-gray-300 rounded-lg mb-4 w-full">
+                    <select
+                      name="editorId"
+                      className="border border-gray-300 rounded-lg mb-4 w-full"
+                    >
                       <option value="">Select Editor</option>
-                      <option value="editor1">Editor 1</option>
-                      <option value="editor2">Editor 2</option>
+                      {editor.length > 0 ? (
+                        editor.map((ed) => (
+                          <option key={ed.id} value={ed.id}>
+                            {ed.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No editors available</option>
+                      )}
                     </select>
 
                     <label className="block mb-2 text-sm font-medium">
@@ -106,7 +224,8 @@ const Creator = () => {
                     <input
                       type="text"
                       className="border border-gray-300 rounded-lg mb-4 w-full"
-                      placeholder="Project Name"
+                      placeholder="projectName"
+                      name="projectName"
                       required
                     />
 
@@ -115,6 +234,7 @@ const Creator = () => {
                     </label>
                     <input
                       type="url"
+                      name="driveLink"
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       placeholder="https://drive.google.com/..."
                       required
@@ -126,6 +246,7 @@ const Creator = () => {
                     <textarea
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
+                       name="instructions"
                       placeholder="Any instructions..."
                     ></textarea>
 
@@ -136,6 +257,7 @@ const Creator = () => {
                         </label>
                         <input
                           type="date"
+                          name="currentDate"
                           className="border border-gray-300 rounded-lg w-full"
                           required
                         />
@@ -146,6 +268,7 @@ const Creator = () => {
                         </label>
                         <input
                           type="date"
+                          name="dueDate"
                           className="border border-gray-300 rounded-lg w-full"
                           required
                         />
@@ -156,7 +279,7 @@ const Creator = () => {
                       <button
                         type="button"
                         className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-                        onClick={closeModal}
+                        onClick={closeModalAssign}
                       >
                         Cancel
                       </button>
@@ -171,31 +294,70 @@ const Creator = () => {
                 </div>
               </div>
             )}
+            {/* Add Editor Modal */}
+            {isAddEditorModalOpen && (
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                  <h2 className="text-lg font-semibold">Add Editor</h2>
+                  <form className="mt-4" onSubmit={handleAddEditor}>
+                    <label className="block mb-2 text-sm font-medium">
+                      Editor Email:
+                    </label>
+                    <input
+                      type="email"
+                      name="editorEmail"
+                      className="border border-gray-300 rounded-lg mb-4 w-full"
+                      placeholder="Editor Email"
+                      required
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <button
+                        type="button"
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                        onClick={closeModalAddEditor}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                      >
+                        Add Editor
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {/* Pending Review Work Section */}
             <section>
-              <h2 class="text-2xl font-semibold mb-4">Pending Review Work</h2>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-4">
-                  <h3 class="font-semibold">Project Name</h3>
-                  <p class="text-gray-600">Editor Name</p>
+              <h2 className="text-2xl font-semibold mb-4">
+                Pending Review Work
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="bg-white rounded-lg shadow-md p-4">
+                  <h3 className="font-semibold">Project Name</h3>
+                  <p className="text-gray-600">Editor Name</p>
                   <p className="text-sm text-gray-500">
                     Instructions : ___________________
                   </p>
-                  <p class="text-sm text-gray-500">Allotted Date: 01/01/2023</p>
-                  <p class="text-sm text-gray-500">Due Date: 01/15/2023</p>
-                  <div class="mt-4 flex space-x-2">
-                    <button class="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-700 transition">
+                  <p className="text-sm text-gray-500">
+                    Allotted Date: 01/01/2023
+                  </p>
+                  <p className="text-sm text-gray-500">Due Date: 01/15/2023</p>
+                  <div className="mt-4 flex space-x-2">
+                    <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-700 transition">
                       Preview
                     </button>
                     <button
-                      class="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition"
+                      className="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition"
                       onClick={() => setIsFeedbackModalOpen(true)}
                     >
                       Approve
                     </button>
                     <button
-                      class="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-700 transition"
+                      className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-700 transition"
                       onClick={() => setIsRejectModalOpen(true)}
                     >
                       Reject
@@ -206,30 +368,30 @@ const Creator = () => {
             </section>
 
             {isFeedbackModalOpen && (
-              <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                  <h2 class="text-lg font-semibold">Approval Feedback</h2>
-                  <form class="mt-4">
-                    <label class="block mb-2 text-sm font-medium">
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                  <h2 className="text-lg font-semibold">Approval Feedback</h2>
+                  <form className="mt-4">
+                    <label className="block mb-2 text-sm font-medium">
                       Feedback:
                     </label>
                     <textarea
-                      class="border border-gray-300 rounded-lg mb-4 w-full"
+                      className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
                       placeholder="Provide feedback..."
                     ></textarea>
 
-                    <div class="flex justify-end space-x-2">
+                    <div className="flex justify-end space-x-2">
                       <button
                         type="button"
-                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                         onClick={() => setIsFeedbackModalOpen(false)}
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                       >
                         Submit
                       </button>
@@ -241,30 +403,30 @@ const Creator = () => {
 
             {/* Reject Modal */}
             {isRejectModalOpen && (
-              <div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-                <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-                  <h2 class="text-lg font-semibold">Rejection Feedback</h2>
-                  <form class="mt-4">
-                    <label class="block mb-2 text-sm font-medium">
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+                <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                  <h2 className="text-lg font-semibold">Rejection Feedback</h2>
+                  <form className="mt-4">
+                    <label className="block mb-2 text-sm font-medium">
                       Feedback:
                     </label>
                     <textarea
-                      class="border border-gray-300 rounded-lg mb-4 w-full"
+                      className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
                       placeholder="Explain reasons for rejection..."
                     ></textarea>
 
-                    <div class="flex justify-end space-x-2">
+                    <div className="flex justify-end space-x-2">
                       <button
                         type="button"
-                        class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
                         onClick={() => setIsRejectModalOpen(false)}
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                       >
                         Confirm Reject
                       </button>
@@ -280,9 +442,7 @@ const Creator = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-4">
                   <h3 className="font-semibold">Project Name</h3>
-                  <p className="text-sm text-gray-500">
-                    Editor Name
-                  </p>
+                  <p className="text-sm text-gray-500">Editor Name</p>
                   <p className="text-sm text-gray-500">
                     Instructions : ___________________
                   </p>
@@ -299,7 +459,6 @@ const Creator = () => {
                 </div>
               </div>
             </section>
-            
 
             {/* Completed Work Section */}
             <section>
@@ -307,9 +466,7 @@ const Creator = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-4">
                   <h3 className="font-semibold">Video Title</h3>
-                  <p className="text-sm text-gray-500">
-                    Editor Name
-                  </p>
+                  <p className="text-sm text-gray-500">Editor Name</p>
                   <p className="text-sm text-gray-500">
                     Completion Date: 01/10/2023
                   </p>
@@ -325,7 +482,7 @@ const Creator = () => {
           </div>
         </main>
 
-        <Footer/>
+        <Footer />
       </div>
     </>
   );

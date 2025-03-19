@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
 
+
 const Editor = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
