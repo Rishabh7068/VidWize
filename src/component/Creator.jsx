@@ -12,61 +12,13 @@ const Creator = () => {
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [pendingWorks,setPendingWorks] = useState([]);
+  const [completedWorks, setCompletedWorks] = useState([]);
+  const [pendingReviewWorks, setPendingReviewWorks] = useState([]); 
 
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
 
-  const completedWorks = [
-    {
-      id: "1",
-      videoTitle: "How to Code in React",
-      editorName: "Ashish",
-      completionDate: "03/15/2025",
-      videoLink: "https://youtube.com/video1",
-    },
-    {
-      id: "2",
-      videoTitle: "Advanced JavaScript Tips",
-      editorName: "Rahul",
-      completionDate: "03/18/2025",
-      videoLink: "https://youtube.com/video2",
-    },
-  ];
 
-  const pendingReviewWorks= [
-    {
-      id: "1",
-      projectName: "Project Alpha",
-      editorName: "Ashish",
-      instructions: "Make it clean and minimal.",
-      allottedDate: "03/10/2025",
-      dueDate: "03/20/2025",
-    },
-    {
-      id: "2",
-      projectName: "Project Beta",
-      editorName: "Rahul",
-      instructions: "Add animations.",
-      allottedDate: "03/12/2025",
-      dueDate: "03/22/2025",
-    },
-    {
-      id: "3",
-      projectName: "Project Beta",
-      editorName: "Rahul",
-      instructions: "Add animations.",
-      allottedDate: "03/12/2025",
-      dueDate: "03/22/2025",
-    },
-    {
-      id: "4",
-      projectName: "Project Beta",
-      editorName: "Rahul",
-      instructions: "Add animations.",
-      allottedDate: "03/12/2025",
-      dueDate: "03/22/2025",
-    },
-  ];
 
 
 
@@ -76,7 +28,9 @@ const Creator = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("User signed in:", user);
-        getPendingWork(); // Call API after Firebase confirms sign-in
+        getPendingReviewWork(); 
+        getPendingWork();
+        getCompletedWork();
       } else {
         console.error("No user is currently signed in.");
       }
@@ -139,6 +93,48 @@ const Creator = () => {
           },
         });
         setPendingWorks(response.data.pendingWork);
+      } catch (error) {
+        console.error("Error fetching pending work:", error);
+        throw error;
+      }
+    };
+
+        // get pending review work 
+        const getPendingReviewWork = async () => {
+          console.log("Current User:", auth.currentUser);
+        if (!auth.currentUser) {
+          console.error("No user is currently signed in.");
+          return;
+        }
+          const token = await auth.currentUser.getIdToken();
+          try {      
+            const response = await axios.get(`http://localhost:9000/api/youtuber/pending_review/${uid}`, {
+              headers: {
+                Authorization: `Bearer ${token}`, // Send JWT token for authentication
+              },
+            });
+            setPendingReviewWorks(response.data.pendingReviews);
+          } catch (error) {
+            console.error("Error fetching pending work:", error);
+            throw error;
+          }
+        };
+
+            // get completed work 
+    const getCompletedWork = async () => {
+      console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+      const token = await auth.currentUser.getIdToken();
+      try {      
+        const response = await axios.get(`http://localhost:9000/api/youtuber/completed_work/${uid}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        });
+        setCompletedWorks(response.data.completedWork);
       } catch (error) {
         console.error("Error fetching pending work:", error);
         throw error;
@@ -465,7 +461,7 @@ const Creator = () => {
                         <strong>Due Date:</strong> {work.dueDate}
                       </p>
                       <div className="mt-4 flex space-x-2">
-                        <a href="#" className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">
+                        <a href={work.preview} target="_blank" className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">
                           Preview
                         </a>
                         <button
