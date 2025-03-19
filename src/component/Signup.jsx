@@ -116,7 +116,7 @@ const Signup = () => {
         </header>
 
         {/* Form */}
-        <div className="flex justify-center mt-10">
+        <div className="flex justify-center mt-10 my-10">
           <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
             <h1 className="text-xl font-bold text-center mb-4">Registration Form</h1>
             <form onSubmit={handleSubmit}>

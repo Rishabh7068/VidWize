@@ -11,9 +11,10 @@ const Creator = () => {
   const [isAddEditorModalOpen, setIsAddEditorModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
-  const [pendingWorks,setPendingWorks] = useState([]);
+  const [pendingWorks, setPendingWorks] = useState([]);
   const [completedWorks, setCompletedWorks] = useState([]);
-  const [pendingReviewWorks, setPendingReviewWorks] = useState([]); 
+  const [pendingReviewWorks, setPendingReviewWorks] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
 
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
@@ -23,22 +24,20 @@ const Creator = () => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("User signed in:", user);
-        getPendingReviewWork(); 
+        getPendingReviewWork();
         getPendingWork();
         getCompletedWork();
       } else {
         console.error("No user is currently signed in.");
       }
     });
-  
+
     // Cleanup on unmount
     if (storedUser.role !== "youtuber") {
       navigate("/editor");
     }
-    return () => unsubscribe(); 
+    return () => unsubscribe();
   }, []);
-
-
 
   const handleLogout = async () => {
     try {
@@ -52,7 +51,6 @@ const Creator = () => {
   };
 
   const [editor, setEditor] = useState({});
-
 
   const fetchEditor = async () => {
     const token = await auth.currentUser.getIdToken();
@@ -73,68 +71,77 @@ const Creator = () => {
     }
   };
 
-    // get pending work 
-    const getPendingWork = async () => {
-      console.log("Current User:", auth.currentUser);
+  // get pending work
+  const getPendingWork = async () => {
+    console.log("Current User:", auth.currentUser);
     if (!auth.currentUser) {
       console.error("No user is currently signed in.");
       return;
     }
-      const token = await auth.currentUser.getIdToken();
-      try {      
-        const response = await axios.get(`http://localhost:9000/api/youtuber/pending_work/${uid}`, {
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/youtuber/pending_work/${uid}`,
+        {
           headers: {
             Authorization: `Bearer ${token}`, // Send JWT token for authentication
           },
-        });
-        setPendingWorks(response.data.pendingWork);
-      } catch (error) {
-        console.error("Error fetching pending work:", error);
-        throw error;
-      }
-    };
-
-        // get pending review work 
-        const getPendingReviewWork = async () => {
-          console.log("Current User:", auth.currentUser);
-        if (!auth.currentUser) {
-          console.error("No user is currently signed in.");
-          return;
         }
-          const token = await auth.currentUser.getIdToken();
-          try {      
-            const response = await axios.get(`http://localhost:9000/api/youtuber/pending_review/${uid}`, {
-              headers: {
-                Authorization: `Bearer ${token}`, // Send JWT token for authentication
-              },
-            });
-            setPendingReviewWorks(response.data.pendingReviews);
-          } catch (error) {
-            console.error("Error fetching pending work:", error);
-            throw error;
-          }
-        };
+      );
+      setPendingWorks(response.data.pendingWork);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
+    }
+  };
 
-            // get completed work 
-    const getCompletedWork = async () => {
-      console.log("Current User:", auth.currentUser);
+  // get pending review work
+  const getPendingReviewWork = async () => {
+    console.log("Current User:", auth.currentUser);
     if (!auth.currentUser) {
       console.error("No user is currently signed in.");
       return;
     }
-      const token = await auth.currentUser.getIdToken();
-      try {      
-        const response = await axios.get(`http://localhost:9000/api/youtuber/completed_work/${uid}`, {
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/youtuber/pending_review/${uid}`,
+        {
           headers: {
             Authorization: `Bearer ${token}`, // Send JWT token for authentication
           },
-        });
-        setCompletedWorks(response.data.completedWork);
-      } catch (error) {
-        console.error("Error fetching pending work:", error);
-        throw error;
-      }
-    };
+        }
+      );
+      setPendingReviewWorks(response.data.pendingReviews);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
+    }
+  };
+
+  // get completed work
+  const getCompletedWork = async () => {
+    console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/youtuber/completed_work/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setCompletedWorks(response.data.completedWork);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
+    }
+  };
 
   const handleAddEditor = async (event) => {
     event.preventDefault();
@@ -172,7 +179,7 @@ const Creator = () => {
       console.error("No user is currently signed in.");
       return;
     }
-    
+
     const {
       editorId,
       projectName,
@@ -181,10 +188,10 @@ const Creator = () => {
       currentDate,
       dueDate,
     } = event.target.elements;
-    const editornameandid  = JSON.parse(editorId.value);
+    const editornameandid = JSON.parse(editorId.value);
     const token = await auth.currentUser.getIdToken();
     console.log(
-      editornameandid.ed_id, 
+      editornameandid.ed_id,
       editornameandid.ed_name,
       projectName.value,
       driveLink.value,
@@ -218,6 +225,34 @@ const Creator = () => {
       alert("Failed to assign work. Please try again.");
     }
   };
+
+  const handleReject = async (event, projectId) => {
+    event.preventDefault();
+    const token = await auth.currentUser.getIdToken();
+    console.log(uid, projectId);
+  
+    try {
+      const response = await axios.put(
+        `http://localhost:9000/api/youtuber/review_reject/${uid}`, 
+        {
+          projectId: projectId,
+          instructions : event.target.elements.feedback.value, // Mapping frontend "feedback" to backend "reason"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
+      alert("Work rejected successfully!");
+      setIsRejectModalOpen(false);
+    } catch (error) {
+      console.error("Error rejecting work:", error);
+      alert("Failed to reject work. Please try again.");
+    }
+  };
+  
 
   const openModalAssign = () => {
     setIsModalOpen(true);
@@ -308,7 +343,13 @@ const Creator = () => {
                       <option value="">Select Editor</option>
                       {editor.length > 0 ? (
                         editor.map((ed) => (
-                          <option key={ed.id} value={JSON.stringify({ ed_id: ed.id, ed_name: ed.name })}>
+                          <option
+                            key={ed.id}
+                            value={JSON.stringify({
+                              ed_id: ed.id,
+                              ed_name: ed.name,
+                            })}
+                          >
                             {ed.name}
                           </option>
                         ))
@@ -456,7 +497,11 @@ const Creator = () => {
                         <strong>Due Date:</strong> {work.dueDate}
                       </p>
                       <div className="mt-4 flex space-x-2">
-                        <a href={work.preview} target="_blank" className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">
+                        <a
+                          href={work.preview}
+                          target="_blank"
+                          className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
+                        >
                           Preview
                         </a>
                         <button
@@ -467,7 +512,10 @@ const Creator = () => {
                         </button>
                         <button
                           className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
-                          onClick={() => setIsRejectModalOpen(true)}
+                          onClick={() => {
+                            setSelectedProjectId(work.id); // Store project ID for rejection
+                            setIsRejectModalOpen(true);
+                          }}
                         >
                           Reject
                         </button>
@@ -517,7 +565,10 @@ const Creator = () => {
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Rejection Feedback</h2>
-                  <form className="mt-4">
+                  <form
+                    className="mt-4"
+                    onSubmit={(event) => handleReject(event, selectedProjectId)}
+                  >
                     <label className="block mb-2 text-sm font-medium">
                       Feedback:
                     </label>
@@ -525,6 +576,7 @@ const Creator = () => {
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
                       placeholder="Explain reasons for rejection..."
+                      name="feedback"
                     ></textarea>
 
                     <div className="flex justify-end space-x-2">
@@ -549,9 +601,7 @@ const Creator = () => {
 
             {/* Pending Review */}
             <section>
-              <h2 className="text-2xl font-semibold mb-4">
-                Pending Work
-              </h2>
+              <h2 className="text-2xl font-semibold mb-4">Pending Work</h2>
               {pendingWorks.length === 0 ? (
                 <p className="text-gray-500">
                   No pending review work available.

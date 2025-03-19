@@ -11,6 +11,7 @@ const Editor = () => {
   const [pendingReviewWorks, setpendingReviewWorks] = useState([]); 
   const [assignedWorks, setAssignedWorks] = useState([]);
   const [completedWorks, setCompletedWorks] = useState([]);
+  const [youtuber, setYoutuber] = useState([]);
 
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
@@ -23,8 +24,6 @@ const Editor = () => {
       navigate("/creator");
     }
   }, []);
-
-
 
   const handleLogout = async () => {
     try {
@@ -130,7 +129,28 @@ const Editor = () => {
     }
   };
 
+  const fetchYoutuber = async () => {
+    const token = await auth.currentUser.getIdToken();
+
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/editor/getYoutuber/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setYoutuber(response.data.editorData);
+    } catch (error) {
+      console.error("Error fetching editor data:", error);
+      throw error;
+    }
+  };
+
+
   const handleModalOpen = () => {
+    fetchYoutuber();
     setIsModalOpen(true);
   };
 
@@ -184,13 +204,30 @@ const Editor = () => {
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Submit Work</h2>
                   <form className="mt-4">
-                    <label className="block mb-2 text-sm font-medium">
-                      Select YouTuber:
+                  
+                  <label className="block mb-2 text-sm font-medium">
+                      Select Youtuber:
                     </label>
-                    <select className="border border-gray-300 rounded-lg mb-4 w-full">
-                      <option value="">Select YouTuber</option>
-                      <option value="youtuber1">YouTuber 1</option>
-                      <option value="youtuber2">YouTuber 2</option>
+                    <select
+                      name="editorId"
+                      className="border border-gray-300 rounded-lg mb-4 w-full"
+                    >
+                      <option value="">Select Youtuber</option>
+                      {youtuber.length > 0 ? (
+                        youtuber.map((yt) => (
+                          <option
+                            key={yt.id}
+                            value={JSON.stringify({
+                              yt_id: yt.id,
+                              yt_name: yt.name,
+                            })}
+                          >
+                            {yt.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No editors available</option>
+                      )}
                     </select>
 
                     <label className="block mb-2 text-sm font-medium">
@@ -283,7 +320,7 @@ const Editor = () => {
                         {work.instructions || "No instructions provided"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Allotted Date: {work.allottedDate}
+                        Allotted Date: {work.currentDate}
                       </p>
                       <p className="text-sm text-gray-500">
                         Due Date: {work.dueDate}
@@ -317,7 +354,7 @@ const Editor = () => {
                         {approval.instructions || "No instructions provided"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        Allotted Date: {approval.allottedDate}
+                        Allotted Date: {approval.currentDate}
                       </p>
                       <p className="text-sm text-gray-500">
                         Due Date: {approval.dueDate}
