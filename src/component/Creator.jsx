@@ -18,11 +18,6 @@ const Creator = () => {
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
 
-
-
-
-
-
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     const unsubscribe = onAuthStateChanged(auth, (user) => {

@@ -1,12 +1,20 @@
-import React, { useState , useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
-
+import { onAuthStateChanged } from "firebase/auth";
+import axios from "axios";
 
 const Editor = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [pendingReviewWorks, setpendingReviewWorks] = useState([]); 
+  const [assignedWorks, setAssignedWorks] = useState([]);
+  const [completedWorks, setCompletedWorks] = useState([]);
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const uid = user.uid;
+
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -17,6 +25,7 @@ const Editor = () => {
   }, []);
 
 
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -25,6 +34,99 @@ const Editor = () => {
       navigate("/");
     } catch (error) {
       console.error("Failed to logout:", error);
+    }
+  };
+
+  useEffect(() => {
+    const storedUser = JSON.parse(localStorage.getItem("user"));
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("User signed in:", user);
+        getPendingReviewWork();
+        getAssignedWork();
+        getCompletedWork();
+      } else {
+        console.error("No user is currently signed in.");
+      }
+    });
+
+    // Cleanup on unmount
+    if (storedUser.role !== "youtuber") {
+      navigate("/editor");
+    }
+    return () => unsubscribe();
+  }, []);
+
+  // // get pending review work
+  const getPendingReviewWork = async () => {
+    console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/editor/pending_approval/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setpendingReviewWorks(response.data.pendingApprovals);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
+    }
+  };
+
+  // get pending work
+  const getAssignedWork = async () => {
+    console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/editor/assignwork/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setAssignedWorks(response.data.assignedWork);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
+    }
+    console.log(assignedWorks);
+  };
+
+  // get pending work
+  const getCompletedWork = async () => {
+    console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(
+        `http://localhost:9000/api/editor/completed_work/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        }
+      );
+      setCompletedWorks(response.data.completedWork);
+    } catch (error) {
+      console.error("Error fetching pending work:", error);
+      throw error;
     }
   };
 
@@ -41,7 +143,9 @@ const Editor = () => {
       <div className="flex flex-col min-h-screen bg-gray-50">
         <header className="border-b border-gray-200 bg-white">
           <nav className="flex items-center justify-between p-6">
-          <a href="/" className="text-lg font-bold text-gray-900">VidWize</a>
+            <a href="/" className="text-lg font-bold text-gray-900">
+              VidWize
+            </a>
             <div className="space-x-4">
               <a href="#" className="text-gray-700 hover:text-blue-600">
                 Home
@@ -76,9 +180,7 @@ const Editor = () => {
           <div className="grid grid-cols-1 gap-6">
             {/* Submit Work Modal */}
             {isModalOpen && (
-              <div
-                className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center"
-              >
+              <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Submit Work</h2>
                   <form className="mt-4">
@@ -151,59 +253,114 @@ const Editor = () => {
             )}
 
             {/* Assigned Work Section */}
+
             <section>
               <h2 className="text-2xl font-semibold mb-4">Assigned Work</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <h3 className="font-semibold">YouTube Channel Name</h3>
-                  <p className="text-gray-600">Project Name: Example Project</p>
-                  <p className="text-sm text-gray-500">
-                    Google Drive Link:{" "}
-                    <a href="#" className="text-blue-600">
-                      View Link
-                    </a>
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Instruction :- ____________________
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Allotted Date: 01/01/2023
-                  </p>
-                  <p className="text-sm text-gray-500">Due Date: 01/15/2023</p>
+              {assignedWorks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {assignedWorks.map((work, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-4"
+                    >
+                      <h3 className="font-semibold">{work.channelName}</h3>
+                      <p className="text-gray-600">
+                        Project Name: {work.projectName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Google Drive Link:{" "}
+                        <a
+                          href={work.driveLink}
+                          className="text-blue-600"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          View Link
+                        </a>
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Instruction:{" "}
+                        {work.instructions || "No instructions provided"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Allotted Date: {work.allottedDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Due Date: {work.dueDate}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-500">No assigned work available.</p>
+              )}
             </section>
+
+            {/* Pending For Approval Section */}
+            <section>
+              <h2 className="text-2xl font-semibold mb-4">
+                Pending For Approval
+              </h2>
+              {pendingReviewWorks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {pendingReviewWorks.map((approval, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-4"
+                    >
+                      <h3 className="font-semibold">{approval.channelName}</h3>
+                      <p className="text-gray-600">
+                        Project Name: {approval.projectName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Instructions:{" "}
+                        {approval.instructions || "No instructions provided"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Allotted Date: {approval.allottedDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Due Date: {approval.dueDate}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">No pending approvals available.</p>
+              )}
+            </section>
+
             
+            
+            
+            
+            {/* Completed Work Section */}
             <section>
-              <h2 class="text-2xl font-semibold mb-4">Pending For Approval</h2>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-4">
-                  <h3 class="font-semibold">Youtuber Channel Name</h3>
-                  <p class="text-gray-600">Project Name</p>
-                  <p className="text-sm text-gray-500">
-                    Instructions : ___________________
-                  </p>
-                  <p class="text-sm text-gray-500">Allotted Date: 01/01/2023</p>
-                  <p class="text-sm text-gray-500">Due Date: 01/15/2023</p>
+              <h2 className="text-2xl font-semibold mb-4">Completed Work</h2>
+              {completedWorks.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedWorks.map((work, index) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg shadow-md p-4"
+                    >
+                      <h3 className="font-semibold">{work.channelName}</h3>
+                      <p className="text-gray-600">
+                        Project Name: {work.projectName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Completion Date: {work.completionDate}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-500">No completed work available.</p>
+              )}
             </section>
-
-            <section>
-              <h2 class="text-2xl font-semibold mb-4">Completed Work</h2>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-4">
-                  <h3 class="font-semibold">Youtuber Channel Name</h3>
-                  <p class="text-gray-600">Project Name</p>
-                  <p class="text-sm text-gray-500">Completion Date: 01/15/2023</p>
-                </div>
-              </div>
-            </section>
-
           </div>
         </main>
-          <Footer/>
-        
+        <Footer />
       </div>
     </>
   );
