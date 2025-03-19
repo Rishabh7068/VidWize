@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
 import axios from "axios";
+import { onAuthStateChanged } from "firebase/auth";
 
 const Creator = () => {
   const navigate = useNavigate();
@@ -10,13 +11,85 @@ const Creator = () => {
   const [isAddEditorModalOpen, setIsAddEditorModalOpen] = useState(false);
   const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [pendingWorks,setPendingWorks] = useState([]);
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const uid = user.uid;
+
+  const completedWorks = [
+    {
+      id: "1",
+      videoTitle: "How to Code in React",
+      editorName: "Ashish",
+      completionDate: "03/15/2025",
+      videoLink: "https://youtube.com/video1",
+    },
+    {
+      id: "2",
+      videoTitle: "Advanced JavaScript Tips",
+      editorName: "Rahul",
+      completionDate: "03/18/2025",
+      videoLink: "https://youtube.com/video2",
+    },
+  ];
+
+  const pendingReviewWorks= [
+    {
+      id: "1",
+      projectName: "Project Alpha",
+      editorName: "Ashish",
+      instructions: "Make it clean and minimal.",
+      allottedDate: "03/10/2025",
+      dueDate: "03/20/2025",
+    },
+    {
+      id: "2",
+      projectName: "Project Beta",
+      editorName: "Rahul",
+      instructions: "Add animations.",
+      allottedDate: "03/12/2025",
+      dueDate: "03/22/2025",
+    },
+    {
+      id: "3",
+      projectName: "Project Beta",
+      editorName: "Rahul",
+      instructions: "Add animations.",
+      allottedDate: "03/12/2025",
+      dueDate: "03/22/2025",
+    },
+    {
+      id: "4",
+      projectName: "Project Beta",
+      editorName: "Rahul",
+      instructions: "Add animations.",
+      allottedDate: "03/12/2025",
+      dueDate: "03/22/2025",
+    },
+  ];
+
+
+
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("User signed in:", user);
+        getPendingWork(); // Call API after Firebase confirms sign-in
+      } else {
+        console.error("No user is currently signed in.");
+      }
+    });
+  
+    // Cleanup on unmount
     if (storedUser.role !== "youtuber") {
       navigate("/editor");
     }
+    return () => unsubscribe(); 
   }, []);
+
+
 
   const handleLogout = async () => {
     try {
@@ -30,8 +103,7 @@ const Creator = () => {
   };
 
   const [editor, setEditor] = useState({});
-  const user = JSON.parse(localStorage.getItem("user"));
-  const uid = user.uid;
+
 
   const fetchEditor = async () => {
     const token = await auth.currentUser.getIdToken();
@@ -50,8 +122,28 @@ const Creator = () => {
       console.error("Error fetching editor data:", error);
       throw error;
     }
-    
   };
+
+    // get pending work 
+    const getPendingWork = async () => {
+      console.log("Current User:", auth.currentUser);
+    if (!auth.currentUser) {
+      console.error("No user is currently signed in.");
+      return;
+    }
+      const token = await auth.currentUser.getIdToken();
+      try {      
+        const response = await axios.get(`http://localhost:9000/api/youtuber/pending_work/${uid}`, {
+          headers: {
+            Authorization: `Bearer ${token}`, // Send JWT token for authentication
+          },
+        });
+        setPendingWorks(response.data.pendingWork);
+      } catch (error) {
+        console.error("Error fetching pending work:", error);
+        throw error;
+      }
+    };
 
   const handleAddEditor = async (event) => {
     event.preventDefault();
@@ -83,22 +175,39 @@ const Creator = () => {
     }
   };
 
-
   const handleassignWork = async (event) => {
     event.preventDefault();
-    if (!auth.currentUser) {  
+    if (!auth.currentUser) {
       console.error("No user is currently signed in.");
       return;
     }
-    const { editorId, projectName, driveLink, instructions, currentDate, dueDate } = event.target.elements;
+    
+    const {
+      editorId,
+      projectName,
+      driveLink,
+      instructions,
+      currentDate,
+      dueDate,
+    } = event.target.elements;
+    const editornameandid  = JSON.parse(editorId.value);
     const token = await auth.currentUser.getIdToken();
-    console.log(editorId.value, projectName.value, driveLink.value, instructions.value, currentDate.value, dueDate.value);
+    console.log(
+      editornameandid.ed_id, 
+      editornameandid.ed_name,
+      projectName.value,
+      driveLink.value,
+      instructions.value,
+      currentDate.value,
+      dueDate.value
+    );
     console.log(token);
     try {
       const response = await axios.post(
         `http://localhost:9000/api/youtuber/assign_work/${uid}`,
         {
-          editorId: editorId.value,
+          editorId: editornameandid.ed_id,
+          editorName: editornameandid.ed_name,
           projectName: projectName.value,
           driveLink: driveLink.value,
           instructions: instructions.value,
@@ -117,8 +226,7 @@ const Creator = () => {
       console.error("Error assigning work:", error);
       alert("Failed to assign work. Please try again.");
     }
-  }
-
+  };
 
   const openModalAssign = () => {
     setIsModalOpen(true);
@@ -209,7 +317,7 @@ const Creator = () => {
                       <option value="">Select Editor</option>
                       {editor.length > 0 ? (
                         editor.map((ed) => (
-                          <option key={ed.id} value={ed.id}>
+                          <option key={ed.id} value={JSON.stringify({ ed_id: ed.id, ed_name: ed.name })}>
                             {ed.name}
                           </option>
                         ))
@@ -246,7 +354,7 @@ const Creator = () => {
                     <textarea
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
-                       name="instructions"
+                      name="instructions"
                       placeholder="Any instructions..."
                     ></textarea>
 
@@ -335,36 +443,48 @@ const Creator = () => {
               <h2 className="text-2xl font-semibold mb-4">
                 Pending Review Work
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <h3 className="font-semibold">Project Name</h3>
-                  <p className="text-gray-600">Editor Name</p>
-                  <p className="text-sm text-gray-500">
-                    Instructions : ___________________
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Allotted Date: 01/01/2023
-                  </p>
-                  <p className="text-sm text-gray-500">Due Date: 01/15/2023</p>
-                  <div className="mt-4 flex space-x-2">
-                    <button className="bg-green-500 text-white px-2 py-1 rounded-lg hover:bg-green-700 transition">
-                      Preview
-                    </button>
-                    <button
-                      className="bg-blue-500 text-white px-2 py-1 rounded-lg hover:bg-blue-700 transition"
-                      onClick={() => setIsFeedbackModalOpen(true)}
+              {pendingReviewWorks.length === 0 ? (
+                <p className="text-gray-500">No pending reviews available.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {pendingReviewWorks.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-white rounded-lg shadow-md p-4"
                     >
-                      Approve
-                    </button>
-                    <button
-                      className="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-700 transition"
-                      onClick={() => setIsRejectModalOpen(true)}
-                    >
-                      Reject
-                    </button>
-                  </div>
+                      <h3 className="font-semibold">{work.projectName}</h3>
+                      <p className="text-gray-600">{work.editorName}</p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Instructions:</strong>{" "}
+                        {work.instructions || "N/A"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Allotted Date:</strong> {work.allottedDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Due Date:</strong> {work.dueDate}
+                      </p>
+                      <div className="mt-4 flex space-x-2">
+                        <a href="#" className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">
+                          Preview
+                        </a>
+                        <button
+                          className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition"
+                          onClick={() => setIsFeedbackModalOpen(true)}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
+                          onClick={() => setIsRejectModalOpen(true)}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </section>
 
             {isFeedbackModalOpen && (
@@ -436,48 +556,85 @@ const Creator = () => {
               </div>
             )}
 
-            {/* Pending Work Section */}
-            <h2 className="text-2xl font-semibold mb-4">Pending Work</h2>
+            {/* Pending Review */}
             <section>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <h3 className="font-semibold">Project Name</h3>
-                  <p className="text-sm text-gray-500">Editor Name</p>
-                  <p className="text-sm text-gray-500">
-                    Instructions : ___________________
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Allotted Date: 01/02/2023
-                  </p>
-                  <p className="text-sm text-gray-500">Due Date: 01/16/2023</p>
-                  <p className="text-sm text-gray-500">
-                    Google Drive Link:{" "}
-                    <a href="#" className="text-blue-600">
-                      View Link
-                    </a>
-                  </p>
+              <h2 className="text-2xl font-semibold mb-4">
+                Pending Work
+              </h2>
+              {pendingWorks.length === 0 ? (
+                <p className="text-gray-500">
+                  No pending review work available.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {pendingWorks.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-white rounded-lg shadow-md p-4"
+                    >
+                      <h3 className="font-semibold">{work.projectName}</h3>
+                      <p className="text-sm text-gray-500">
+                        <strong>Editor:</strong> {work.editorName}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Instructions:</strong>{" "}
+                        {work.instructions || "N/A"}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Allotted Date:</strong> {work.currentDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Due Date:</strong> {work.dueDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Google Drive Link:</strong>{" "}
+                        <a
+                          href={work.driveLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          View Link
+                        </a>
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </section>
 
             {/* Completed Work Section */}
             <section>
               <h2 className="text-2xl font-semibold mb-4">Completed Work</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
-                  <h3 className="font-semibold">Video Title</h3>
-                  <p className="text-sm text-gray-500">Editor Name</p>
-                  <p className="text-sm text-gray-500">
-                    Completion Date: 01/10/2023
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Video Link:{" "}
-                    <a href="#" className="text-blue-600">
-                      Watch Video
-                    </a>
-                  </p>
+              {completedWorks.length === 0 ? (
+                <p className="text-gray-500">No completed work available.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedWorks.map((work) => (
+                    <div
+                      key={work.id}
+                      className="bg-white rounded-lg shadow-md p-4"
+                    >
+                      <h3 className="font-semibold">{work.videoTitle}</h3>
+                      <p className="text-sm text-gray-500">{work.editorName}</p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Completion Date:</strong> {work.completionDate}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Video Link:</strong>{" "}
+                        <a
+                          href={work.videoLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          Watch Video
+                        </a>
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </section>
           </div>
         </main>
