@@ -253,21 +253,31 @@ const Creator = () => {
     }
   };
 
-  const [authUrl, setAuthUrl] = useState("");
+  const [OauthVerifed, setOauthVerifed] = useState(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("oauth_success")) {
+      setOauthVerifed(true);
+      alert("OAuth authentication successful! 🎉");
+      // Remove query param from the URL to prevent showing alert again on refresh
+      navigate("/creator", { replace: true });
+    }
+  }, [navigate]);
+
 
   const getAuthUrl = async () => {
-  
     const token = await auth.currentUser.getIdToken();
     try {
-      const response = await axios.get(`http://localhost:9000/api/auth/getOauthUrl/${uid}`,
+      const response = await axios.get(
+        `http://localhost:9000/api/auth/getOauthUrl/${uid}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         }
       );
-      console.log(response.data.authUrl);
-      setAuthUrl(response.data.authUrl);
+      window.location.href = response.data.authUrl;
     } catch (error) {
       console.error("Error fetching auth URL:", error);
     }
@@ -330,12 +340,14 @@ const Creator = () => {
           <div className="mb-6 flex justify-between items-center ">
             <h1 className="text-3xl font-bold ">Creator Dashboard</h1>
             <div>
-              <button
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition "
-                onClick={getAuthUrl}
-              >
-                {authUrl ? "Click Here" : "Verify OAuth"}
-              </button>
+              {!OauthVerifed && (
+                <button
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  onClick={getAuthUrl}
+                >
+                  Verify OAuth
+                </button>
+              )}
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition mx-10"
                 onClick={openModalAssign}
