@@ -60,7 +60,7 @@ function App() {
         />
         <Route
           exact
-          path="/Creator"
+          path="/creator"
           element={
             <>
               <Creator />

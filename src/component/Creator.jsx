@@ -230,13 +230,13 @@ const Creator = () => {
     event.preventDefault();
     const token = await auth.currentUser.getIdToken();
     console.log(uid, projectId);
-  
+
     try {
       const response = await axios.put(
-        `http://localhost:9000/api/youtuber/review_reject/${uid}`, 
+        `http://localhost:9000/api/youtuber/review_reject/${uid}`,
         {
           projectId: projectId,
-          instructions : event.target.elements.feedback.value, // Mapping frontend "feedback" to backend "reason"
+          instructions: event.target.elements.feedback.value, // Mapping frontend "feedback" to backend "reason"
         },
         {
           headers: {
@@ -244,7 +244,7 @@ const Creator = () => {
           },
         }
       );
-  
+
       alert("Work rejected successfully!");
       setIsRejectModalOpen(false);
     } catch (error) {
@@ -252,7 +252,26 @@ const Creator = () => {
       alert("Failed to reject work. Please try again.");
     }
   };
+
+  const [authUrl, setAuthUrl] = useState("");
+
+  const getAuthUrl = async () => {
   
+    const token = await auth.currentUser.getIdToken();
+    try {
+      const response = await axios.get(`http://localhost:9000/api/auth/getOauthUrl/${uid}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      console.log(response.data.authUrl);
+      setAuthUrl(response.data.authUrl);
+    } catch (error) {
+      console.error("Error fetching auth URL:", error);
+    }
+  };
 
   const openModalAssign = () => {
     setIsModalOpen(true);
@@ -311,6 +330,12 @@ const Creator = () => {
           <div className="mb-6 flex justify-between items-center ">
             <h1 className="text-3xl font-bold ">Creator Dashboard</h1>
             <div>
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition "
+                onClick={getAuthUrl}
+              >
+                {authUrl ? "Click Here" : "Verify OAuth"}
+              </button>
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition mx-10"
                 onClick={openModalAssign}
