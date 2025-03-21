@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
@@ -8,14 +8,16 @@ import axios from "axios";
 const Editor = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [pendingReviewWorks, setpendingReviewWorks] = useState([]); 
+  const [pendingReviewWorks, setpendingReviewWorks] = useState([]);
   const [assignedWorks, setAssignedWorks] = useState([]);
   const [completedWorks, setCompletedWorks] = useState([]);
   const [youtuber, setYoutuber] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const selectedProjectRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
-
+  let iddd = null;
 
   useEffect(() => {
     const storedUser = JSON.parse(localStorage.getItem("user"));
@@ -148,14 +150,53 @@ const Editor = () => {
     }
   };
 
-
-  const handleModalOpen = () => {
-    fetchYoutuber();
-    setIsModalOpen(true);
-  };
-
   const handleModalClose = () => {
     setIsModalOpen(false);
+  };
+
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    const { title, description, tags, file } = e.target.elements;
+    const token = await auth.currentUser.getIdToken();
+    setUploading(true);
+  
+    try {
+      // Create FormData object
+      const formData = new FormData();
+      formData.append('file', file.files[0]);
+      formData.append('title', title.value);
+      formData.append('description', description.value);
+      formData.append('tags', tags.value);
+      formData.append('ProjectId', selectedProjectRef.current);
+  
+      const response = await axios.post(
+        `http://localhost:9000/api/editor/submit_work/${uid}`,  // Using backticks for template literal
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setProgress(percentCompleted);
+          },
+        }
+      );
+  
+      console.log("Upload to YouTube successful:", response.data);
+      alert("Work submitted successfully!");
+      handleModalClose();
+    } catch (error) {
+      console.error("Error uploading to YouTube:", error);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -174,6 +215,9 @@ const Editor = () => {
                 About
               </a>
               <a href="#" className="text-gray-700 hover:text-blue-600">
+                Task Management
+              </a>
+              <a href="#" className="text-gray-700 hover:text-blue-600">
                 Dashboard
               </a>
               <a
@@ -189,12 +233,6 @@ const Editor = () => {
         <main className="flex-1 p-6">
           <div className="mb-6 flex justify-between items-center">
             <h1 className="text-3xl font-bold">Editor Dashboard</h1>
-            <button
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-              onClick={handleModalOpen}
-            >
-              Submit Work
-            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-6">
@@ -203,38 +241,13 @@ const Editor = () => {
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Submit Work</h2>
-                  <form className="mt-4">
-                  
-                  <label className="block mb-2 text-sm font-medium">
-                      Select Youtuber:
-                    </label>
-                    <select
-                      name="editorId"
-                      className="border border-gray-300 rounded-lg mb-4 w-full"
-                    >
-                      <option value="">Select Youtuber</option>
-                      {youtuber.length > 0 ? (
-                        youtuber.map((yt) => (
-                          <option
-                            key={yt.id}
-                            value={JSON.stringify({
-                              yt_id: yt.id,
-                              yt_name: yt.name,
-                            })}
-                          >
-                            {yt.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option disabled>No editors available</option>
-                      )}
-                    </select>
-
+                  <form className="mt-4" onSubmit={handleUpload}>
                     <label className="block mb-2 text-sm font-medium">
                       Title:
                     </label>
                     <input
                       type="text"
+                      name="title"
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       placeholder="Project Title"
                       required
@@ -246,6 +259,7 @@ const Editor = () => {
                     <textarea
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
+                      name="description"
                       placeholder="Description"
                       required
                     ></textarea>
@@ -255,6 +269,7 @@ const Editor = () => {
                     </label>
                     <input
                       type="text"
+                      name="tags"
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       placeholder="Tags (comma-separated)"
                       required
@@ -265,6 +280,7 @@ const Editor = () => {
                     </label>
                     <input
                       type="file"
+                      name="file"
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       required
                     />
@@ -283,6 +299,12 @@ const Editor = () => {
                       >
                         Upload
                       </button>
+                      {uploading && (
+                        <div>
+                          <p>Uploading to YouTube: {progress}%</p>
+                          <progress value={progress} max="100" />
+                        </div>
+                      )}
                     </div>
                   </form>
                 </div>
@@ -325,6 +347,17 @@ const Editor = () => {
                       <p className="text-sm text-gray-500">
                         Due Date: {work.dueDate}
                       </p>
+                      <button
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                        onClick={() => {
+                          setIsModalOpen(true);
+                          setSelectedProjectId(work.id);
+                          selectedProjectRef.current = work.id;
+                          console.log(selectedProjectRef.current);
+                        }}
+                      >
+                        Submit Work
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -333,7 +366,7 @@ const Editor = () => {
               )}
             </section>
 
-            {/* Pending For Approval Section */}
+            {/* Pending For Approval Section  */}
             <section>
               <h2 className="text-2xl font-semibold mb-4">
                 Pending For Approval
@@ -367,10 +400,6 @@ const Editor = () => {
               )}
             </section>
 
-            
-            
-            
-            
             {/* Completed Work Section */}
             <section>
               <h2 className="text-2xl font-semibold mb-4">Completed Work</h2>
@@ -385,8 +414,22 @@ const Editor = () => {
                       <p className="text-gray-600">
                         Project Name: {work.projectName}
                       </p>
+                      <p className="text-gray-600">
+                        Video Title: {work.title}
+                      </p>
                       <p className="text-sm text-gray-500">
-                        Completion Date: {work.completionDate}
+                        Video Link:{" "}
+                        <a
+                          href={work.videoUrl}
+                          className="text-blue-600"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          View Link
+                        </a>
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Completion Date: {work.completedAt}
                       </p>
                     </div>
                   ))}

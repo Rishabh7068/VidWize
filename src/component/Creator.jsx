@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, signOut } from "../Firebase/firebaseconfige";
 import Footer from "./Footer";
@@ -15,6 +15,7 @@ const Creator = () => {
   const [completedWorks, setCompletedWorks] = useState([]);
   const [pendingReviewWorks, setPendingReviewWorks] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const selectedProjectRef = useRef(null);
 
   const user = JSON.parse(localStorage.getItem("user"));
   const uid = user.uid;
@@ -226,6 +227,35 @@ const Creator = () => {
     }
   };
 
+
+  const handleApprove = async (event, projectId) => {
+    event.preventDefault();
+    const token = await auth.currentUser.getIdToken();
+    console.log(uid, projectId);
+
+    try {
+      const response = await axios.put(
+        `http://localhost:9000/api/youtuber/review_approve/${uid}`,
+        {
+          projectId: projectId,
+          feedback: event.target.elements.feedback.value,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      alert("Work approved successfully!");
+      setIsFeedbackModalOpen(false);
+    } catch (error) {
+      console.error("Error approving work:", error);
+      alert("Failed to approve work. Please try again.");
+    }
+  };
+
+      
+
   const handleReject = async (event, projectId) => {
     event.preventDefault();
     const token = await auth.currentUser.getIdToken();
@@ -252,6 +282,8 @@ const Creator = () => {
       alert("Failed to reject work. Please try again.");
     }
   };
+
+
 
   const [OauthVerifed, setOauthVerifed] = useState(false);
 
@@ -319,6 +351,9 @@ const Creator = () => {
               </a>
               <a href="#" className="text-gray-700 hover:text-blue-600">
                 Dashboard
+              </a>
+              <a href="#" className="text-gray-700 hover:text-blue-600">
+                Task Management
               </a>
               <Link
                 to="/recommendation"
@@ -528,14 +563,17 @@ const Creator = () => {
                         {work.instructions || "N/A"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        <strong>Allotted Date:</strong> {work.allottedDate}
+                        <strong>Allotted Date:</strong> {work.createdAt}
                       </p>
                       <p className="text-sm text-gray-500">
                         <strong>Due Date:</strong> {work.dueDate}
                       </p>
+                      <p className="text-sm text-gray-500">
+                        <strong>Due Date:</strong> {work.submitedAt}
+                      </p>
                       <div className="mt-4 flex space-x-2">
                         <a
-                          href={work.preview}
+                          href={work.videoUrl}
                           target="_blank"
                           className="bg-green-500 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition"
                         >
@@ -543,7 +581,11 @@ const Creator = () => {
                         </a>
                         <button
                           className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition"
-                          onClick={() => setIsFeedbackModalOpen(true)}
+                          onClick={() => {
+                            setSelectedProjectId(work.id); // Store project ID for rejection
+                            selectedProjectRef.current = work.id;
+                            setIsFeedbackModalOpen(true)
+                          }}
                         >
                           Approve
                         </button>
@@ -551,6 +593,7 @@ const Creator = () => {
                           className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition"
                           onClick={() => {
                             setSelectedProjectId(work.id); // Store project ID for rejection
+                            selectedProjectRef.current = work.id;
                             setIsRejectModalOpen(true);
                           }}
                         >
@@ -567,7 +610,9 @@ const Creator = () => {
               <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
                 <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
                   <h2 className="text-lg font-semibold">Approval Feedback</h2>
-                  <form className="mt-4">
+                  <form className="mt-4"
+                    onSubmit={(event) => handleApprove(event, selectedProjectRef.current)}
+                  >
                     <label className="block mb-2 text-sm font-medium">
                       Feedback:
                     </label>
@@ -575,6 +620,7 @@ const Creator = () => {
                       className="border border-gray-300 rounded-lg mb-4 w-full"
                       rows="3"
                       placeholder="Provide feedback..."
+                      name="feedback"
                     ></textarea>
 
                     <div className="flex justify-end space-x-2">
@@ -604,7 +650,7 @@ const Creator = () => {
                   <h2 className="text-lg font-semibold">Rejection Feedback</h2>
                   <form
                     className="mt-4"
-                    onSubmit={(event) => handleReject(event, selectedProjectId)}
+                    onSubmit={(event) => handleReject(event, selectedProjectRef.current)}
                   >
                     <label className="block mb-2 text-sm font-medium">
                       Feedback:
@@ -641,7 +687,7 @@ const Creator = () => {
               <h2 className="text-2xl font-semibold mb-4">Pending Work</h2>
               {pendingWorks.length === 0 ? (
                 <p className="text-gray-500">
-                  No pending review work available.
+                  No pending work available.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -659,7 +705,7 @@ const Creator = () => {
                         {work.instructions || "N/A"}
                       </p>
                       <p className="text-sm text-gray-500">
-                        <strong>Allotted Date:</strong> {work.currentDate}
+                        <strong>Allotted Date:</strong> {work.createdAt}
                       </p>
                       <p className="text-sm text-gray-500">
                         <strong>Due Date:</strong> {work.dueDate}
@@ -693,15 +739,15 @@ const Creator = () => {
                       key={work.id}
                       className="bg-white rounded-lg shadow-md p-4"
                     >
-                      <h3 className="font-semibold">{work.videoTitle}</h3>
+                      <h3 className="font-semibold">{work.title}</h3>
                       <p className="text-sm text-gray-500">{work.editorName}</p>
                       <p className="text-sm text-gray-500">
-                        <strong>Completion Date:</strong> {work.completionDate}
+                        <strong>Completion Date:</strong> {work.completedAt}
                       </p>
                       <p className="text-sm text-gray-500">
                         <strong>Video Link:</strong>{" "}
                         <a
-                          href={work.videoLink}
+                          href={work.videoUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline"
